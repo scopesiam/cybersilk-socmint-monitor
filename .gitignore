@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+.env
+*.session
+*.session-journal
+# Keep API keys and secrets private
+.env
+.env.*
+!.env.example
+
+# Ignore Python virtual environments
+.venv/
+.venv313/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
