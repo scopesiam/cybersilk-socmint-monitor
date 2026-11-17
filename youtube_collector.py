@@ -14,15 +14,19 @@ load_dotenv()
 # Read the YouTube API key without displaying it
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-if not API_KEY:
-    raise RuntimeError(
-        "YOUTUBE_API_KEY was not found. Check your .env file."
-    )
+
 
 
 
 def search_youtube(topic, start_date, end_date, max_results=10):
     """Search YouTube videos by topic and UTC publication dates."""
+    
+    if not API_KEY:
+        raise RuntimeError(
+            "YOUTUBE_API_KEY was not found. "
+            "Add your API key to the .env file to use live YouTube search."
+        )
+
 
     # Convert the dates into the format YouTube expects
     start = datetime.strptime(start_date, "%Y-%m-%d")
