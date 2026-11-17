@@ -7,14 +7,18 @@ The application collects real YouTube video metadata through the YouTube Data AP
 
 ## Core Capabilities
 
-- Live YouTube collection using topic and date filters.
+- Live YouTube Data API v3 collection using topic and date filters.
 - Synthetic Telegram and YouTube demonstration data.
-- Rule-based narrative classification.
-- Narrative volume analysis and daily trend visualisation.
-- Earliest observed posts within the collected dataset.
-- Potential coordinated posting detection using text similarity and posting-time proximity.
-- Evidence records containing account IDs, timestamps, post IDs and source URLs.
-- CSV and JSON export for further investigation.
+- Rule-based narrative classification and volume analysis.
+- Daily narrative trends and per-platform comparisons.
+- Earliest observed posts and chronological narrative propagation timeline.
+- Potential coordinated activity detection using RapidFuzz text similarity and posting-time proximity.
+- Connected account grouping with detection reasons, similarity scores and time gaps.
+- Rule-based claim verification indicators for financial distress, service disruptions and cyber incidents.
+- Evidence records containing account IDs, timestamps, engagement metrics, post IDs and source URLs.
+- CSV and JSON exports for further investigation.
+- Interactive Streamlit dashboard with adjustable detection thresholds.
+
 
 **Data integrity:** Live YouTube records and synthetic demonstration posts are clearly distinguished. Synthetic data must not be presented as evidence of real-world activity.
 
