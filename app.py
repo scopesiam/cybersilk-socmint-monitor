@@ -50,6 +50,28 @@ def narrative(text):
     return "Other"
 
 
+def misinformation_indicator(text):
+    t = str(text).lower()
+
+    if any(x in t for x in (
+        "collapsing", "collapse", "bankrupt",
+        "withdraw your money"
+    )):
+        return "Unverified financial claim"
+
+    if any(x in t for x in (
+        "cannot withdraw", "withdrawal restrictions",
+        "withdrawals restricted"
+    )):
+        return "Unverified service disruption claim"
+
+    if any(x in t for x in (
+        "cyberattack", "hacked", "data breach"
+    )):
+        return "Cyber incident claim - verification required"
+
+    return "No specific claim flagged"
+
 def youtube_narrative(text):
     """Classify YouTube content using simple keyword rules."""
 
@@ -106,6 +128,27 @@ def find_pairs(df, threshold=90, window=5):
     "gap_minutes", "post_1", "post_2",
     "url_1", "url_2"])
 
+
+def find_groups(pairs_df):
+    if pairs_df.empty:
+        return []
+
+    groups = []
+
+    for _, pair in pairs_df.iterrows():
+        accounts = {pair["account_1"], pair["account_2"]}
+        matching_groups = [
+            group for group in groups
+            if group.intersection(accounts)
+        ]
+
+        for group in matching_groups:
+            accounts.update(group)
+            groups.remove(group)
+
+        groups.append(accounts)
+
+    return [sorted(group) for group in groups]
 
 
 with st.sidebar:
@@ -185,8 +228,12 @@ if data_source == "Live YouTube":
 else:
     df["narrative"] = df["text"].map(narrative)
 
+df["misinformation_indicator"] = df["text"].apply(misinformation_indicator)
+
+
 df["day"] = df["published_at"].dt.strftime("%Y-%m-%d")
 pairs = find_pairs(df, threshold, window)
+groups = find_groups(pairs)
 
 c1, c2, c3 = st.columns(3)
 c1.metric("Posts collected", len(df))
@@ -205,13 +252,47 @@ with overview:
     st.subheader("Earliest observed posts (within collected sample)")
     earliest = df.sort_values("published_at").groupby("narrative", as_index=False).first()
     st.dataframe(earliest[["narrative", "platform", "account_id", "published_at", "url"]], hide_index=True)
+    
 with coordination:
     st.subheader("Potential coordinated posting pairs")
     st.write("Rule: different accounts, similar text and posts close in time. A match is NOT proof of coordination.")
     st.dataframe(pairs, hide_index=True, use_container_width=True)
     st.warning("Analyst review required: common breaking news can produce false positives.")
+
+    st.subheader("Potential Coordinated Account Groups")
+
+    if groups:
+        for group_number, accounts in enumerate(groups, start=1):
+            st.write(f"Group {group_number}: {len(accounts)} accounts")
+            st.write(", ".join(map(str, accounts)))
+
+            group_pairs = pairs[
+                pairs["account_1"].isin(accounts)
+                & pairs["account_2"].isin(accounts)
+            ]
+
+            st.caption(
+                f"Detection reason: {len(group_pairs)} matching post pairs; "
+                f"text similarity {group_pairs['similarity_pct'].min():.0f}–"
+                f"{group_pairs['similarity_pct'].max():.0f}%; "
+                f"posting gaps {group_pairs['gap_minutes'].min():.1f}–"
+                f"{group_pairs['gap_minutes'].max():.1f} minutes."
+            )
+
+    else:
+        st.info("No coordinated account groups detected.")
+
 with evidence:
-    st.dataframe(df[["post_id", "platform", "account_id", "text", "published_at", "engagement", "url", "narrative"]], hide_index=True, use_container_width=True)
+
+    st.dataframe(
+        df[[
+            "post_id", "platform", "account_id", "text",
+            "misinformation_indicator", "published_at",
+            "engagement", "url"
+        ]],
+        hide_index=True,
+        use_container_width=True
+    )
     export_df = df.drop(columns=["day"]).copy()
     for col in ("published_at", "collected_at"):
         export_df[col] = export_df[col].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -219,4 +300,38 @@ with evidence:
     st.download_button("Download posts JSON", export_df.to_json(orient="records", indent=2).encode(), "posts.json", "application/json")
     st.download_button("Download coordination CSV", pairs.to_csv(index=False).encode(), "coordination.csv", "text/csv")
 with methodology:
-    st.markdown("""**Coverage:** synthetic demonstration posts only. No real social media APIs connected yet.\n\n**Narratives:** simple transparent keyword rules; ambiguous wording can be misclassified.\n\n**Coordination:** RapidFuzz text similarity plus posting-time proximity. No account creation dates, profile images, forwards, or verified amplification edges are available in this demo.\n\n**Misinformation:** not automatically determined. Claims are unverified until supported or contradicted by independently sourced evidence.\n\n**Origins:** earliest observed post in this limited dataset, not the true first post online.\n\n**Media:** demo has empty media URL arrays; real collectors will populate media metadata when permitted.\n\n**Privacy:** only collect accessible public data in accordance with platform rules; never commit API credentials.\n""")
+
+    st.markdown(
+        "**Coverage:** Live YouTube Data API v3 is integrated. "
+        "Telegram is available as synthetic demonstration data only."
+    )
+
+    st.markdown(
+        "**Narratives:** Posts are grouped using transparent keyword-based "
+        "rules. Ambiguous language may be misclassified."
+    )
+
+    st.markdown(
+        "**Coordination:** RapidFuzz measures text similarity, combined "
+        "with posting-time proximity. Matches are indicators, not proof."
+    )
+
+    st.markdown(
+        "**Misinformation:** Claims are treated as unverified unless "
+        "independent evidence supports or contradicts them."
+    )
+
+    st.markdown(
+        "**Origins:** The earliest observed post is identified within "
+        "the collected sample, not across the entire internet."
+    )
+
+    st.markdown(
+        "**Media:** Available YouTube metadata includes video links "
+        "and thumbnails. Synthetic posts may have empty media fields."
+    )
+
+    st.markdown(
+        "**Privacy:** Only permitted accessible data should be collected. "
+        "API credentials must never be committed to GitHub."
+    )
